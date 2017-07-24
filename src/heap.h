@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include <iostream>
 
 template <typename T, class Compare = std::less<T>>
 class Heap {
@@ -53,6 +54,7 @@ private:
 
 public:
 	Heap();
+	Heap(bool(*comparer)(T, T));
 	~Heap();
 	int size();
 	/*
@@ -83,31 +85,31 @@ Heap<T, Compare>::Heap() {
 }
 
 template<typename T, class Compare>
+inline Heap<T, Compare>::Heap(bool(*comparer)(T, T)) {
+	heap_array = new T[array_size];
+	cmp = comparer;
+}
+
+template<typename T, class Compare>
 inline Heap<T, Compare>::~Heap() {
 	delete[] heap_array;
 }
 
 template<typename T, class Compare>
 int Heap<T, Compare>::leftChild(int index) {
-	int childIndex = index * 2 + 1;
-	if (childIndex < element_count) {
-		return childIndex;
-	}
-	return -1;
+	if (index >= element_count / 2) return -1;
+	return index * 2 + 1;
 }
 
 template<typename T, class Compare>
 int Heap<T, Compare>::rightChild(int index) {
-	int childIndex = index * 2 + 2;
-	if (childIndex < element_count) {
-		return childIndex;
-	}
-	return -1;
+	if (index >= (element_count - 1) / 2) return -1;
+	return index * 2 + 2;
 }
 
 template<typename T, class Compare>
 int Heap<T, Compare>::parent(int index) {
-	if (index = 0) return 0;
+	if (index <= 0) return -1;
 	return (index-1)/2;
 }
 
@@ -125,7 +127,7 @@ void Heap<T, Compare>::buildHeap() {
 
 template<typename T, class Compare>
 bool Heap<T, Compare>::shiftElem(int index) {
-	if (index < 0 || index > element_count) return false;
+	if (index < 0 || index >= element_count) return false;
 	while (!isLeaf(index)) {
 		int childIndex = leftChild(index);
 		// The left child is either lesser or grater than the right child so check againt that child insted
@@ -146,16 +148,18 @@ int Heap<T, Compare>::size() {
 template<typename T, class Compare>
 void Heap<T, Compare>::insert(T value) {
 	// If the array is not large enough then make a new one that fits the elements (but lager then that)
-	if (element_count == array_size) {
-		T* tmp_array = new T[array_size * 2];
+	if (element_count >= array_size) {
+		array_size *= 2;
+		T* tmp_array = new T[array_size];
 		std::copy(heap_array, heap_array + element_count, tmp_array);
+		delete[] heap_array;
 		heap_array = tmp_array;
 	}
 	// Get the last element index and then use post-increment
 	int current_index = element_count++;
 	heap_array[current_index] = value;
 	// Let the element bubble upp as far it can, to the right place
-	while ((current_index != 0) && cmp(heap_array[current_index], heap_array[parent(current_index)])) {
+	while ((current_index > 0) && cmp(heap_array[current_index], heap_array[parent(current_index)])) {
 		std::swap(heap_array[current_index], heap_array[parent(current_index)]);
 		current_index = parent(current_index);
 	}
@@ -163,7 +167,7 @@ void Heap<T, Compare>::insert(T value) {
 
 template<typename T, class Compare>
 T Heap<T, Compare>::removeFirst() {
-	if (element_count == 0) return NULL;
+	if (element_count == 0) throw std::bad_exception("No value in heap");
 	// Swap the last element with the first and then make sure it is a heap again
 	std::swap(heap_array[0], heap_array[--element_count]);
 	if (element_count != 0) {
@@ -175,7 +179,7 @@ T Heap<T, Compare>::removeFirst() {
 template<typename T, class Compare>
 T Heap<T, Compare>::remove(int index) {
 	// If the index is outside of the element_count return null
-	if (index < 0 || index >= element_count) return NULL;
+	if (index < 0 || index >= element_count) throw std::out_of_range("Index outside of array");
 	// If the element is the last then no shifting is needed
 	if (index == element_count - 1) element_count--;
 	else {
